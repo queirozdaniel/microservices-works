@@ -1,0 +1,121 @@
+version: '3'
+services:
+
+    hr-config-server: 
+        build:
+            dockerfile: ./hr-config-server/hr-config-server.dockerfile
+            context: .
+        image: daniel/ms-spring-config-server
+        container_name: ms-spring-config-server
+        volumes:
+            - /tmp
+        ports:
+            - "8888:8888"
+        networks:
+            - hr-network
+        depends_on:
+            - "postgres2"
+        
+    hr-eureka-server: 
+        build:
+            dockerfile: ./hr-eureka-server/hr-eureka-server.dockerfile
+            context: .
+        image: daniel/ms-spring-eureka-server
+        container_name: ms-spring-eureka-server
+        ports:
+            - "8761:8761"
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+    
+    hr-api-gateway-zuul: 
+        build:
+            dockerfile: ./hr-api-gateway-zuul/hr-api-gateway-zuul.dockerfile
+            context: .
+        image: daniel/ms-spring-hr-api-gateway-zuul
+        container_name: ms-spring-hr-api-gateway-zuul
+        ports:
+            - "8765:8765"
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+            - "hr-eureka-server"
+            
+    hr-oauth: 
+        build:
+            dockerfile: ./hr-oauth/hr-oauth.dockerfile
+            context: .
+        image: daniel/ms-spring-hr-oauth
+        container_name: ms-spring-hr-oauth
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+            - "hr-api-gateway-zuul"
+
+    hr-worker: 
+        build:
+            dockerfile: ./hr-worker/hr-worker.dockerfile
+            context: .
+        image: daniel/ms-spring-hr-worker
+        container_name: ms-spring-hr-worker
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+            - "hr-api-gateway-zuul"
+            
+    hr-user: 
+        build:
+            dockerfile: ./hr-user/hr-user.dockerfile
+            context: .
+        image: daniel/ms-spring-hr-user
+        container_name: ms-spring-hr-user
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+            - "hr-api-gateway-zuul"
+
+    hr-payroll: 
+        build:
+            dockerfile: ./hr-payroll/hr-payroll.dockerfile
+            context: .
+        image: daniel/ms-spring-hr-payroll
+        container_name: ms-spring-hr-payroll
+        networks:
+            - hr-network
+        depends_on:
+            - "hr-config-server"
+            - "hr-api-gateway-zuul"
+
+    postgres:
+        image: postgres:12-alpine
+        container_name: postgres-hr-worker
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_USER: "db_hr_worker"
+            POSTGRES_PASSWORD: "1234567"  
+        networks:
+            - hr-network
+    
+    postgres2:
+        image: postgres:12-alpine
+        container_name: postgres-hr-user
+        ports:
+            - "5433:5433"
+        environment:
+            POSTGRES_USER: "db_hr_user"
+            POSTGRES_PASSWORD: "1234567"  
+        networks:
+            - hr-network
+        depends_on:
+            - "postgres"
+
+networks:
+    hr-network:
+        driver: bridge
+        
